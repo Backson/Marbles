@@ -14,10 +14,6 @@ enum class BallType : uint8_t {
 
 enum class BallState : uint8_t {
     None = 0,
-    RotorNorth,
-    RotorEast,
-    RotorSouth,
-    RotorWest,
     EnteringFromNorth,
     EnteringFromEast,
     EnteringFromSouth,
@@ -79,18 +75,6 @@ void Model::progress(double milliseconds) {
         ball.transition += milliseconds * velocity;
 
         switch (ball.state) {
-            case BallState::RotorNorth:
-
-                break;
-            case BallState::RotorEast:
-
-                break;
-            case BallState::RotorSouth:
-
-                break;
-            case BallState::RotorWest:
-
-                break;
             case BallState::EnteringFromNorth:
                 if (ball.transition >= 0.5) {
                     ball.transition -= 0.5;
@@ -102,6 +86,7 @@ void Model::progress(double milliseconds) {
                         ball.state = BallState::ExitingTowardsWest;
                         break;
                     case Tile::Vertical:
+                    case Tile::Crossing:
                         ball.state = BallState::ExitingTowardsSouth;
                         break;
                     default:
@@ -122,6 +107,7 @@ void Model::progress(double milliseconds) {
                         ball.state = BallState::ExitingTowardsSouth;
                         break;
                     case Tile::Horizontal:
+                    case Tile::Crossing:
                         ball.state = BallState::ExitingTowardsWest;
                         break;
                     default:
@@ -142,6 +128,7 @@ void Model::progress(double milliseconds) {
                         ball.state = BallState::ExitingTowardsWest;
                         break;
                     case Tile::Vertical:
+                    case Tile::Crossing:
                         ball.state = BallState::ExitingTowardsNorth;
                         break;
                     default:
@@ -162,6 +149,7 @@ void Model::progress(double milliseconds) {
                         ball.state = BallState::ExitingTowardsSouth;
                         break;
                     case Tile::Horizontal:
+                    case Tile::Crossing:
                         ball.state = BallState::ExitingTowardsEast;
                         break;
                     default:
@@ -286,6 +274,19 @@ void View::draw(const Model &m) const {
                 draw_track(r, c, 0, 0, -1, 0);
                 break;
 
+            case Tile::Horizontal:
+                draw_track(r, c, -1, 0, 1, 0);
+                break;
+
+            case Tile::Vertical:
+                draw_track(r, c, 0, -1, 0, 1);
+                break;
+
+            case Tile::Crossing:
+                draw_track(r, c, -1, 0, 1, 0);
+                draw_track(r, c, 0, -1, 0, 1);
+                break;
+
             }
         }
     }
@@ -384,23 +385,37 @@ int main()
 
     model.tile(0, 0) = Tile::CornerSouthEast;
     model.tile(1, 0) = Tile::CornerNorthEast;
-    model.tile(0, 1) = Tile::CornerSouthWest;
-    model.tile(1, 1) = Tile::CornerNorthWest;
-
-    model.tile(3, 0) = Tile::CornerSouthEast;
-    model.tile(4, 0) = Tile::CornerNorthEast;
-    model.tile(3, 1) = Tile::CornerSouthWest;
-    model.tile(4, 1) = Tile::CornerNorthWest;
+    model.tile(0, 1) = Tile::Horizontal;
+    model.tile(1, 1) = Tile::Horizontal;
+    model.tile(0, 2) = Tile::CornerSouthWest;
+    model.tile(1, 2) = Tile::CornerNorthWest;
 
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsEast, BallType::Green, 0, 0, 0 });
-    model.balls().emplace_back(Ball{ BallState::ExitingTowardsSouth, BallType::Red, 0, 0, 1 });
-    model.balls().emplace_back(Ball{ BallState::ExitingTowardsWest, BallType::Yellow, 0, 1, 1 });
+    model.balls().emplace_back(Ball{ BallState::ExitingTowardsSouth, BallType::Red, 0, 0, 2 });
+    model.balls().emplace_back(Ball{ BallState::ExitingTowardsWest, BallType::Yellow, 0, 1, 2 });
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsNorth, BallType::Blue, 0, 1, 0 });
 
-    model.balls().emplace_back(Ball{ BallState::ExitingTowardsSouth, BallType::Green, 0, 3, 0 });
-    model.balls().emplace_back(Ball{ BallState::ExitingTowardsWest, BallType::Red, 0, 3, 1 });
+    model.tile(2, 0) = Tile::CornerSouthEast;
+    model.tile(2, 1) = Tile::CornerSouthWest;
+    model.tile(3, 0) = Tile::Vertical;
+    model.tile(3, 1) = Tile::Vertical;
+    model.tile(4, 0) = Tile::CornerNorthEast;
+    model.tile(4, 1) = Tile::CornerNorthWest;
+
+    model.balls().emplace_back(Ball{ BallState::ExitingTowardsSouth, BallType::Green, 0, 2, 0 });
+    model.balls().emplace_back(Ball{ BallState::ExitingTowardsWest, BallType::Red, 0, 2, 1 });
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsNorth, BallType::Yellow, 0, 4, 1 });
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsEast, BallType::Blue, 0, 4, 0 });
+
+    model.tile(2, 5) = Tile::Crossing;
+    model.tile(1, 5) = Tile::CornerSouthEast;
+    model.tile(1, 6) = Tile::CornerSouthWest;
+    model.tile(2, 6) = Tile::CornerNorthWest;
+    model.tile(2, 4) = Tile::CornerSouthEast;
+    model.tile(3, 4) = Tile::CornerNorthEast;
+    model.tile(3, 5) = Tile::CornerNorthWest;
+
+    model.balls().emplace_back(Ball{ BallState::ExitingTowardsSouth, BallType::Red, 0, 2, 5 });
 
     View view(40, 75, 90);
 
