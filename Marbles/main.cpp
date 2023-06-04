@@ -32,7 +32,7 @@ struct Ball {
     int col;
 };
 
-enum class Tile : uint8_t {
+enum class TileType : uint8_t {
     Empty,
     CornerNorthEast,
     CornerNorthWest,
@@ -41,10 +41,30 @@ enum class Tile : uint8_t {
     Horizontal,
     Vertical,
     Crossing,
+    Rotor,
+};
+
+enum class RotorState : uint8_t {
+    Resting,
+    TurningClockwise,
+    TurningCounterClockwise,
+};
+
+struct Tile {
+    TileType type;
+    union {
+        struct {
+            RotorState state;
+            int position;
+            double transition;
+        } rotor;
+    };
 };
 
 class Model {
 public:
+    void turnClockwise(int row, int col);
+    void turnCounterClockwise(int row, int col);
     void progress(double milliseconds);
 
     const std::vector<Ball> &balls() const { return _balls; }
@@ -57,14 +77,57 @@ public:
     const Tile &tile(int row, int col) const { return _tiles[col + row * 8]; }
     Tile &tile(int row, int col) { return _tiles[col + row * 8]; }
 
-
-
 private:
     std::vector<Tile> _tiles;
     std::vector<Ball> _balls;
 };
 
+void Model::turnClockwise(int row, int col) {
+    if (tile(row, col).type == TileType::Rotor && tile(row, col).rotor.state == RotorState::Resting) {
+        tile(row, col).rotor.state = RotorState::TurningClockwise;
+        tile(row, col).rotor.transition = 0.0;
+    }
+}
+
+void Model::turnCounterClockwise(int row, int col) {
+    if (tile(row, col).type == TileType::Rotor && tile(row, col).rotor.state == RotorState::Resting) {
+        tile(row, col).rotor.state = RotorState::TurningCounterClockwise;
+        tile(row, col).rotor.transition = 0.0;
+    }
+}
+
 void Model::progress(double milliseconds) {
+
+    for (int r = 0; r < 5; ++r) {
+        for (int c = 0; c < 8; ++c) {
+            switch (tile(r, c).type) {
+            case TileType::Rotor:
+                if (tile(r, c).rotor.state == RotorState::TurningClockwise)
+                {
+                    tile(r, c).rotor.transition += milliseconds / 1000.0 * 60.0 / 5.0;
+                    if (tile(r, c).rotor.transition >= 1.0) {
+                        tile(r, c).rotor.state = RotorState::Resting;
+                        tile(r, c).rotor.position += 1;
+                        tile(r, c).rotor.position %= 4;
+                    }
+                }
+                else if (tile(r, c).rotor.state == RotorState::TurningCounterClockwise)
+                {
+                    tile(r, c).rotor.transition += milliseconds / 1000.0 * 60.0 / 5.0;
+                    if (tile(r, c).rotor.transition >= 1.0) {
+                        tile(r, c).rotor.state = RotorState::Resting;
+                        tile(r, c).rotor.position += 4;
+                        tile(r, c).rotor.position -= 1;
+                        tile(r, c).rotor.position %= 4;
+                    }
+                }
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
     for (auto &ball : _balls) {
         // tiles per millisecond
         double velocity = 1e-3;
@@ -78,15 +141,15 @@ void Model::progress(double milliseconds) {
             case BallState::EnteringFromNorth:
                 if (ball.transition >= 0.5) {
                     ball.transition -= 0.5;
-                    switch (tile) {
-                    case Tile::CornerNorthEast:
+                    switch (tile.type) {
+                    case TileType::CornerNorthEast:
                         ball.state = BallState::ExitingTowardsEast;
                         break;
-                    case Tile::CornerNorthWest:
+                    case TileType::CornerNorthWest:
                         ball.state = BallState::ExitingTowardsWest;
                         break;
-                    case Tile::Vertical:
-                    case Tile::Crossing:
+                    case TileType::Vertical:
+                    case TileType::Crossing:
                         ball.state = BallState::ExitingTowardsSouth;
                         break;
                     default:
@@ -99,15 +162,15 @@ void Model::progress(double milliseconds) {
             case BallState::EnteringFromEast:
                 if (ball.transition >= 0.5) {
                     ball.transition -= 0.5;
-                    switch (tile) {
-                    case Tile::CornerNorthEast:
+                    switch (tile.type) {
+                    case TileType::CornerNorthEast:
                         ball.state = BallState::ExitingTowardsNorth;
                         break;
-                    case Tile::CornerSouthEast:
+                    case TileType::CornerSouthEast:
                         ball.state = BallState::ExitingTowardsSouth;
                         break;
-                    case Tile::Horizontal:
-                    case Tile::Crossing:
+                    case TileType::Horizontal:
+                    case TileType::Crossing:
                         ball.state = BallState::ExitingTowardsWest;
                         break;
                     default:
@@ -120,15 +183,15 @@ void Model::progress(double milliseconds) {
             case BallState::EnteringFromSouth:
                 if (ball.transition >= 0.5) {
                     ball.transition -= 0.5;
-                    switch (tile) {
-                    case Tile::CornerSouthEast:
+                    switch (tile.type) {
+                    case TileType::CornerSouthEast:
                         ball.state = BallState::ExitingTowardsEast;
                         break;
-                    case Tile::CornerSouthWest:
+                    case TileType::CornerSouthWest:
                         ball.state = BallState::ExitingTowardsWest;
                         break;
-                    case Tile::Vertical:
-                    case Tile::Crossing:
+                    case TileType::Vertical:
+                    case TileType::Crossing:
                         ball.state = BallState::ExitingTowardsNorth;
                         break;
                     default:
@@ -141,15 +204,15 @@ void Model::progress(double milliseconds) {
             case BallState::EnteringFromWest:
                 if (ball.transition >= 0.5) {
                     ball.transition -= 0.5;
-                    switch (tile) {
-                    case Tile::CornerNorthWest:
+                    switch (tile.type) {
+                    case TileType::CornerNorthWest:
                         ball.state = BallState::ExitingTowardsNorth;
                         break;
-                    case Tile::CornerSouthWest:
+                    case TileType::CornerSouthWest:
                         ball.state = BallState::ExitingTowardsSouth;
                         break;
-                    case Tile::Horizontal:
-                    case Tile::Crossing:
+                    case TileType::Horizontal:
+                    case TileType::Crossing:
                         ball.state = BallState::ExitingTowardsEast;
                         break;
                     default:
@@ -218,7 +281,7 @@ void View::draw(const Model &m) const {
         al_draw_line(_x + c * _w + 0.5, _y + 0.5, _x + c * _w + 0.5, _y + 5 * _w + 0.5, line_color, 0.0);
     }
 
-    // draw tracks
+    // draw tiles
     static const auto draw_track = [=](int r, int c, double x1, double y1, double x2, double y2) {
         x1 *= 0.5;
         y1 *= 0.5;
@@ -250,41 +313,85 @@ void View::draw(const Model &m) const {
         al_draw_line(x1, y1, x2, y2, color, 1.5);
     };
 
+    static const auto draw_circle = [=](int row, int col, double x1, double y1, double r, ALLEGRO_COLOR color) {
+        x1 *= 0.5;
+        y1 *= 0.5;
+        r *= 0.5;
+
+        x1 += 0.5;
+        y1 += 0.5;
+
+        x1 += col;
+        y1 += row;
+
+        r *= _w;
+        x1 *= _w;
+        y1 *= _w;
+
+        x1 += _x;
+        y1 += _y;
+
+        al_draw_filled_circle(x1, y1, r, color);
+    };
+
     for (int r = 0; r < 5; ++r) {
         for (int c = 0; c < 8; ++c) {
             Tile tile = m.tile(r, c);
-            switch (tile) {
-            case Tile::CornerNorthEast:
+            switch (tile.type) {
+            case TileType::CornerNorthEast:
                 draw_track(r, c, 0, 0, 0, -1);
                 draw_track(r, c, 0, 0, 1, 0);
                 break;
 
-            case Tile::CornerNorthWest:
+            case TileType::CornerNorthWest:
                 draw_track(r, c, 0, 0, 0, -1);
                 draw_track(r, c, 0, 0, -1, 0);
                 break;
 
-            case Tile::CornerSouthEast:
+            case TileType::CornerSouthEast:
                 draw_track(r, c, 0, 0, 0, 1);
                 draw_track(r, c, 0, 0, 1, 0);
                 break;
 
-            case Tile::CornerSouthWest:
+            case TileType::CornerSouthWest:
                 draw_track(r, c, 0, 0, 0, 1);
                 draw_track(r, c, 0, 0, -1, 0);
                 break;
 
-            case Tile::Horizontal:
+            case TileType::Horizontal:
                 draw_track(r, c, -1, 0, 1, 0);
                 break;
 
-            case Tile::Vertical:
+            case TileType::Vertical:
                 draw_track(r, c, 0, -1, 0, 1);
                 break;
 
-            case Tile::Crossing:
+            case TileType::Crossing:
                 draw_track(r, c, -1, 0, 1, 0);
                 draw_track(r, c, 0, -1, 0, 1);
+                break;
+
+            case TileType::Rotor:
+            {
+                draw_circle(r, c, 0, 0, 0.8, al_map_rgb(0x66, 0x66, 0x66));
+                double pi_half = 1.5707963267948966;
+                double quarter_turns = tile.rotor.position;
+                if (tile.rotor.state == RotorState::TurningClockwise) {
+                    quarter_turns += tile.rotor.transition;
+                }
+                else if (tile.rotor.state == RotorState::TurningCounterClockwise) {
+                    quarter_turns += 4;
+                    quarter_turns -= tile.rotor.transition;
+                }
+                double angle = quarter_turns * pi_half;
+                draw_circle(r, c, 0.5 * sin(angle), 0.5 * -cos(angle), 0.2, al_map_rgb(0x33, 0x33, 0x33));
+                draw_circle(r, c, 0.5 * -cos(angle), 0.5 * -sin(angle), 0.2, al_map_rgb(0x33, 0x33, 0x33));
+                draw_circle(r, c, 0.5 * -sin(angle), 0.5 * cos(angle), 0.2, al_map_rgb(0x33, 0x33, 0x33));
+                draw_circle(r, c, 0.5 * cos(angle), 0.5 * sin(angle), 0.2, al_map_rgb(0x33, 0x33, 0x33));
+                break;
+            }
+
+            default:
                 break;
 
             }
@@ -380,42 +487,46 @@ int main()
 
     model.tiles().resize(8 * 5);
     for (auto &tile : model.tiles()) {
-        tile = Tile::Empty;
+        tile = Tile{ TileType::Empty };
     }
 
-    model.tile(0, 0) = Tile::CornerSouthEast;
-    model.tile(1, 0) = Tile::CornerNorthEast;
-    model.tile(0, 1) = Tile::Horizontal;
-    model.tile(1, 1) = Tile::Horizontal;
-    model.tile(0, 2) = Tile::CornerSouthWest;
-    model.tile(1, 2) = Tile::CornerNorthWest;
+    model.tile(0, 0) = Tile{ TileType::CornerSouthEast };
+    model.tile(1, 0) = Tile{ TileType::CornerNorthEast };
+    model.tile(0, 1) = Tile{ TileType::Horizontal };
+    model.tile(1, 1) = Tile{ TileType::Horizontal };
+    model.tile(0, 2) = Tile{ TileType::CornerSouthWest };
+    model.tile(1, 2) = Tile{ TileType::CornerNorthWest };
 
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsEast, BallType::Green, 0, 0, 0 });
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsSouth, BallType::Red, 0, 0, 2 });
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsWest, BallType::Yellow, 0, 1, 2 });
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsNorth, BallType::Blue, 0, 1, 0 });
 
-    model.tile(2, 0) = Tile::CornerSouthEast;
-    model.tile(2, 1) = Tile::CornerSouthWest;
-    model.tile(3, 0) = Tile::Vertical;
-    model.tile(3, 1) = Tile::Vertical;
-    model.tile(4, 0) = Tile::CornerNorthEast;
-    model.tile(4, 1) = Tile::CornerNorthWest;
+	model.tile(2, 0) = Tile{ TileType::CornerSouthEast };
+	model.tile(2, 1) = Tile{ TileType::CornerSouthWest };
+	model.tile(3, 0) = Tile{ TileType::Vertical };
+	model.tile(3, 1) = Tile{ TileType::Vertical };
+	model.tile(4, 0) = Tile{ TileType::CornerNorthEast };
+	model.tile(4, 1) = Tile{ TileType::CornerNorthWest };
 
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsSouth, BallType::Green, 0, 2, 0 });
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsWest, BallType::Red, 0, 2, 1 });
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsNorth, BallType::Yellow, 0, 4, 1 });
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsEast, BallType::Blue, 0, 4, 0 });
 
-    model.tile(2, 5) = Tile::Crossing;
-    model.tile(1, 5) = Tile::CornerSouthEast;
-    model.tile(1, 6) = Tile::CornerSouthWest;
-    model.tile(2, 6) = Tile::CornerNorthWest;
-    model.tile(2, 4) = Tile::CornerSouthEast;
-    model.tile(3, 4) = Tile::CornerNorthEast;
-    model.tile(3, 5) = Tile::CornerNorthWest;
+	model.tile(2, 5) = Tile{ TileType::Crossing };
+	model.tile(1, 5) = Tile{ TileType::CornerSouthEast };
+	model.tile(1, 6) = Tile{ TileType::CornerSouthWest };
+	model.tile(2, 6) = Tile{ TileType::CornerNorthWest };
+	model.tile(2, 4) = Tile{ TileType::CornerSouthEast };
+	model.tile(3, 4) = Tile{ TileType::CornerNorthEast };
+	model.tile(3, 5) = Tile{ TileType::CornerNorthWest };
 
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsSouth, BallType::Red, 0, 2, 5 });
+
+    model.tile(2, 3) = Tile{ TileType::Rotor };
+    model.tile(2, 3).rotor.state = RotorState::Resting;
+    model.tile(2, 3).rotor.position = 0;
 
     View view(40, 75, 90);
 
@@ -429,9 +540,20 @@ int main()
             model.progress(1000.0 / 60.0);
             redraw = true;
         }
-        else if ((event.type == ALLEGRO_EVENT_KEY_DOWN) || (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE))
+        else if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
         {
             break;
+        }
+        else if (event.type == ALLEGRO_EVENT_KEY_DOWN) {
+            if (event.keyboard.keycode == ALLEGRO_KEY_A) {
+                model.turnClockwise(2, 3);
+            }
+            else if (event.keyboard.keycode == ALLEGRO_KEY_D) {
+                model.turnCounterClockwise(2, 3);
+            }
+            else if (event.keyboard.keycode == ALLEGRO_KEY_ENTER) {
+                break;
+            }
         }
 
         if (redraw && al_is_event_queue_empty(queue))
