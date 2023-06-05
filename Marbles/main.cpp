@@ -5,6 +5,13 @@
 #include <cstdint>
 #include <vector>
 
+static constexpr double GRID_OFFSET_X = 40;
+static constexpr double GRID_OFFSET_Y = 75;
+static constexpr double TILE_SIZE = 90;
+
+static constexpr int ROWS = 5;
+static constexpr int COLS = 8;
+
 enum class BallType : uint8_t {
     Red,
     Green,
@@ -74,8 +81,8 @@ public:
     std::vector<Tile> &tiles() { return _tiles; }
 
 
-    const Tile &tile(int row, int col) const { return _tiles[col + row * 8]; }
-    Tile &tile(int row, int col) { return _tiles[col + row * 8]; }
+    const Tile &tile(int row, int col) const { return _tiles[col + row * COLS]; }
+    Tile &tile(int row, int col) { return _tiles[col + row * COLS]; }
 
 private:
     std::vector<Tile> _tiles;
@@ -98,8 +105,8 @@ void Model::turnCounterClockwise(int row, int col) {
 
 void Model::progress(double milliseconds) {
 
-    for (int r = 0; r < 5; ++r) {
-        for (int c = 0; c < 8; ++c) {
+    for (int r = 0; r < ROWS; ++r) {
+        for (int c = 0; c < COLS; ++c) {
             switch (tile(r, c).type) {
             case TileType::Rotor:
                 if (tile(r, c).rotor.state == RotorState::TurningClockwise)
@@ -133,7 +140,7 @@ void Model::progress(double milliseconds) {
         double velocity = 1e-3;
 
         // current tile
-        Tile tile = _tiles[ball.col + ball.row * 8];
+        Tile tile = _tiles[ball.col + ball.row * COLS];
 
         ball.transition += milliseconds * velocity;
 
@@ -274,10 +281,10 @@ void View::draw(const Model &m) const {
     ALLEGRO_COLOR line_color = al_map_rgb(127, 127, 127);
 
     // draw grid
-    for (int r = 0; r <= 5; ++r) {
+    for (int r = 0; r <= ROWS; ++r) {
         al_draw_line(_x + 0.5, _y + r * _w + 0.5, _x + 8 * _w + 0.5, _y + r * _w + 0.5, line_color, 0.0);
     }
-    for (int c = 0; c <= 8; ++c) {
+    for (int c = 0; c <= COLS; ++c) {
         al_draw_line(_x + c * _w + 0.5, _y + 0.5, _x + c * _w + 0.5, _y + 5 * _w + 0.5, line_color, 0.0);
     }
 
@@ -334,8 +341,8 @@ void View::draw(const Model &m) const {
         al_draw_filled_circle(x1, y1, r, color);
     };
 
-    for (int r = 0; r < 5; ++r) {
-        for (int c = 0; c < 8; ++c) {
+    for (int r = 0; r < ROWS; ++r) {
+        for (int c = 0; c < COLS; ++c) {
             Tile tile = m.tile(r, c);
             switch (tile.type) {
             case TileType::CornerNorthEast:
@@ -469,6 +476,7 @@ int main()
 {
     al_init();
     al_install_keyboard();
+    al_install_mouse();
     al_init_primitives_addon();
 
     ALLEGRO_TIMER *timer = al_create_timer(1.0 / 60.0);
@@ -477,6 +485,7 @@ int main()
     ALLEGRO_FONT *font = al_create_builtin_font();
 
     al_register_event_source(queue, al_get_keyboard_event_source());
+    al_register_event_source(queue, al_get_mouse_event_source());
     al_register_event_source(queue, al_get_display_event_source(disp));
     al_register_event_source(queue, al_get_timer_event_source(timer));
 
@@ -485,7 +494,7 @@ int main()
 
     Model model;
 
-    model.tiles().resize(8 * 5);
+    model.tiles().resize(ROWS * COLS);
     for (auto &tile : model.tiles()) {
         tile = Tile{ TileType::Empty };
     }
@@ -524,11 +533,19 @@ int main()
 
     model.balls().emplace_back(Ball{ BallState::ExitingTowardsSouth, BallType::Red, 0, 2, 5 });
 
+    model.tile(1, 3) = Tile{ TileType::Rotor };
+    model.tile(1, 3).rotor.state = RotorState::Resting;
+    model.tile(1, 3).rotor.position = 0;
+
     model.tile(2, 3) = Tile{ TileType::Rotor };
     model.tile(2, 3).rotor.state = RotorState::Resting;
     model.tile(2, 3).rotor.position = 0;
 
-    View view(40, 75, 90);
+    model.tile(3, 3) = Tile{ TileType::Rotor };
+    model.tile(3, 3).rotor.state = RotorState::Resting;
+    model.tile(3, 3).rotor.position = 0;
+
+    View view(GRID_OFFSET_X, GRID_OFFSET_Y, TILE_SIZE);
 
     al_start_timer(timer);
     while (1)
@@ -545,14 +562,25 @@ int main()
             break;
         }
         else if (event.type == ALLEGRO_EVENT_KEY_DOWN) {
-            if (event.keyboard.keycode == ALLEGRO_KEY_A) {
-                model.turnClockwise(2, 3);
-            }
-            else if (event.keyboard.keycode == ALLEGRO_KEY_D) {
-                model.turnCounterClockwise(2, 3);
-            }
-            else if (event.keyboard.keycode == ALLEGRO_KEY_ENTER) {
+            if (event.keyboard.keycode == ALLEGRO_KEY_ENTER) {
                 break;
+            }
+        }
+        else if (event.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
+            int button = event.mouse.button;
+            int x = event.mouse.x;
+            int y = event.mouse.y;
+
+            int col = (int)(((double)x - GRID_OFFSET_X) / TILE_SIZE);
+            int row = (int)(((double)y - GRID_OFFSET_Y) / TILE_SIZE);
+
+            if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+                if (model.tile(row, col).type == TileType::Rotor) {
+                    if (button == 1)
+                        model.turnCounterClockwise(row, col);
+                    else if (button == 2)
+                        model.turnClockwise(row, col);
+                }
             }
         }
 
