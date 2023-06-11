@@ -57,6 +57,8 @@ struct Tile {
             RotorState state;
             int position;
             double transition;
+            bool taken[4];
+            bool connected[4];
         } rotor;
     };
 };
@@ -69,6 +71,12 @@ public:
 
     void turnClockwise(int row, int col);
     void turnCounterClockwise(int row, int col);
+
+    void eject(int row, int col, int direction);
+    void ejectNorth(int row, int col) { eject(row, col, 0); }
+    void ejectEast(int row, int col) { eject(row, col, 1); }
+    void ejectSouth(int row, int col) { eject(row, col, 2); }
+    void ejectWest(int row, int col) { eject(row, col, 3); }
 
     void progress(double milliseconds);
 

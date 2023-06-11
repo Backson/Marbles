@@ -108,6 +108,15 @@ void View::draw(const Model &m) const {
 
             case TileType::Rotor:
             {
+                if (m.tile(r, c).rotor.connected[0])
+                    draw_track(r, c, 0, 0, 0, -1);
+                if (m.tile(r, c).rotor.connected[1])
+                    draw_track(r, c, 0, 0, 1, 0);
+                if (m.tile(r, c).rotor.connected[2])
+                    draw_track(r, c, 0, 0, 0, 1);
+                if (m.tile(r, c).rotor.connected[3])
+                    draw_track(r, c, 0, 0, -1, 0);
+
                 draw_circle(r, c, 0, 0, 0.8, al_map_rgb(0x66, 0x66, 0x66));
                 double pi_half = 1.5707963267948966;
                 double quarter_turns = tile.rotor.position;
@@ -169,6 +178,23 @@ void View::draw(const Model &m) const {
             offset_x = 1.0 - transition;
             offset_y = 0.5;
             break;
+
+        case BallState::InsideRotor:
+        {
+            double pi_half = 1.5707963267948966;
+            double quarter_turns = m.tile(ball.row, ball.col).rotor.position + ball.rotor_position;
+            if (m.tile(ball.row, ball.col).rotor.state == RotorState::TurningClockwise) {
+                quarter_turns += m.tile(ball.row, ball.col).rotor.transition;
+            }
+            else if (m.tile(ball.row, ball.col).rotor.state == RotorState::TurningCounterClockwise) {
+                quarter_turns += 4;
+                quarter_turns -= m.tile(ball.row, ball.col).rotor.transition;
+            }
+            double angle = quarter_turns * pi_half;
+            offset_x = 0.5 + 0.25 * sin(angle);
+            offset_y = 0.5 + 0.25 * -cos(angle);
+            break;
+        }
 
         default:
             throw 1;

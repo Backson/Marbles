@@ -27,6 +27,27 @@ void Model::turnCounterClockwise(int row, int col) {
     }
 }
 
+void Model::eject(int row, int col, int direction) {
+    if (tile(row, col).type == TileType::Rotor && tile(row, col).rotor.state == RotorState::Resting && tile(row, col).rotor.connected[direction]) {
+        int position = (direction - tile(row, col).rotor.position + 4) % 4;
+
+        for (auto &ball : _balls) {
+            if (ball.row == row && ball.col == col && ball.state == BallState::InsideRotor && ball.rotor_position == position) {
+                
+                static constexpr BallState exiting_states[4] = {
+                    BallState::ExitingTowardsNorth,
+                    BallState::ExitingTowardsEast,
+                    BallState::ExitingTowardsSouth,
+                    BallState::ExitingTowardsWest,
+                };
+                
+                ball.state = exiting_states[direction];
+                ball.transition = 0.25;
+            }
+        }
+    }
+}
+
 static void progress_rotor(Tile &tile, double milliseconds) {
     if (tile.rotor.state == RotorState::TurningClockwise)
     {
@@ -42,14 +63,13 @@ static void progress_rotor(Tile &tile, double milliseconds) {
         tile.rotor.transition += milliseconds / 1000.0 * 60.0 / 5.0;
         if (tile.rotor.transition >= 1.0) {
             tile.rotor.state = RotorState::Resting;
-            tile.rotor.position += 4;
-            tile.rotor.position -= 1;
+            tile.rotor.position += 3;
             tile.rotor.position %= 4;
         }
     }
 }
 
-static void progress_ball(Ball &ball, const Tile &tile, double milliseconds) {
+static void progress_ball(Ball &ball, Tile &tile, double milliseconds) {
     // tiles per millisecond
     double velocity = 1e-3;
     ball.transition += milliseconds * velocity;
@@ -90,6 +110,47 @@ static void progress_ball(Ball &ball, const Tile &tile, double milliseconds) {
     }
 
     switch (tile.type) {
+        case TileType::Rotor:
+            if (ball.transition >= 0.25) {
+                int direction;
+                switch (ball.state) {
+                case BallState::EnteringFromNorth: direction = 0; break;
+                case BallState::EnteringFromEast: direction = 1; break;
+                case BallState::EnteringFromSouth: direction = 2; break;
+                case BallState::EnteringFromWest: direction = 3; break;
+                default: direction = -1; break;
+                }
+                if (direction >= 0) {
+                    int position = (direction - tile.rotor.position + 4) % 4;
+
+                    if (tile.rotor.state == RotorState::Resting && !tile.rotor.taken[position]) {
+                        tile.rotor.taken[position] = true;
+                        ball.state = BallState::InsideRotor;
+                        ball.rotor_position = position;
+                        ball.transition = 0;
+                    }
+                    else {
+                        switch (ball.state) {
+                        case BallState::EnteringFromNorth:
+                            ball.state = BallState::ExitingTowardsNorth;
+                            break;
+                        case BallState::EnteringFromEast:
+                            ball.state = BallState::ExitingTowardsEast;
+                            break;
+                        case BallState::EnteringFromSouth:
+                            ball.state = BallState::ExitingTowardsSouth;
+                            break;
+                        case BallState::EnteringFromWest:
+                            ball.state = BallState::ExitingTowardsWest;
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                }
+            }
+            break;
+
         case TileType::CornerNorthEast:
             if (ball.transition >= 0.5) {
                 ball.transition -= 0.5;
@@ -213,7 +274,57 @@ static void progress_ball(Ball &ball, const Tile &tile, double milliseconds) {
     }
 }
 
+static void recompute_taken(Model &model) {
+    // set all taken values of all rotors to false
+    for (int r = 0; r < model.rows(); ++r) {
+        for (int c = 0; c < model.cols(); ++c) {
+            Tile &tile = model.tile(r, c);
+            if (tile.type == TileType::Rotor) {
+                for (int i = 0; i < 4; ++i) {
+                    tile.rotor.taken[i] = false;
+                }
+            }
+        }
+    }
+
+    // if a ball is in the InsideRotor state, set the taken value to true
+    for (auto &ball : model.balls()) {
+        if (ball.state == BallState::InsideRotor) {
+            Tile &tile = model.tile(ball.row, ball.col);
+            if (tile.type == TileType::Rotor) {
+                tile.rotor.taken[ball.rotor_position] = true;
+            }
+        }
+    }
+}
+
+
+static void recompute_connected(Model &model) {
+    for (int r = 0; r < model.rows(); ++r) {
+        for (int c = 0; c < model.cols(); ++c) {
+            Tile &tile = model.tile(r, c);
+            if (tile.type == TileType::Rotor) {
+                // north
+                tile.rotor.connected[0] = r > 0 && model.tile(r - 1, c).type != TileType::Empty;
+
+                // east
+                tile.rotor.connected[1] = c < model.cols() - 1 && model.tile(r, c + 1).type != TileType::Empty;
+
+                // south
+                tile.rotor.connected[2] = r < model.rows() - 1 && model.tile(r + 1, c).type != TileType::Empty;
+
+                // west
+                tile.rotor.connected[3] = c > 0 && model.tile(r, c - 1).type != TileType::Empty;
+            }
+        }
+    }
+}
+
 void Model::progress(double milliseconds) {
+    // TODO get rid of this inefficient nonsense
+    recompute_taken(*this);
+    recompute_connected(*this);
+
     for (int r = 0; r < _rows; ++r) {
         for (int c = 0; c < _cols; ++c) {
             switch (tile(r, c).type) {
