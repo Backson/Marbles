@@ -54,123 +54,162 @@ static void progress_ball(Ball &ball, const Tile &tile, double milliseconds) {
     double velocity = 1e-3;
     ball.transition += milliseconds * velocity;
 
+    // exiting balls don't care about the tile type
     switch (ball.state) {
-    case BallState::EnteringFromNorth:
-        if (ball.transition >= 0.5) {
-            ball.transition -= 0.5;
-            switch (tile.type) {
-            case TileType::CornerNorthEast:
-                ball.state = BallState::ExitingTowardsEast;
-                break;
-            case TileType::CornerNorthWest:
-                ball.state = BallState::ExitingTowardsWest;
-                break;
-            case TileType::Vertical:
-            case TileType::Crossing:
-                ball.state = BallState::ExitingTowardsSouth;
-                break;
-            default:
-                ball.state = BallState::ExitingTowardsNorth;
-                break;
-            }
-        }
-        break;
-
-    case BallState::EnteringFromEast:
-        if (ball.transition >= 0.5) {
-            ball.transition -= 0.5;
-            switch (tile.type) {
-            case TileType::CornerNorthEast:
-                ball.state = BallState::ExitingTowardsNorth;
-                break;
-            case TileType::CornerSouthEast:
-                ball.state = BallState::ExitingTowardsSouth;
-                break;
-            case TileType::Horizontal:
-            case TileType::Crossing:
-                ball.state = BallState::ExitingTowardsWest;
-                break;
-            default:
-                ball.state = BallState::ExitingTowardsEast;
-                break;
-            }
-        }
-        break;
-
-    case BallState::EnteringFromSouth:
-        if (ball.transition >= 0.5) {
-            ball.transition -= 0.5;
-            switch (tile.type) {
-            case TileType::CornerSouthEast:
-                ball.state = BallState::ExitingTowardsEast;
-                break;
-            case TileType::CornerSouthWest:
-                ball.state = BallState::ExitingTowardsWest;
-                break;
-            case TileType::Vertical:
-            case TileType::Crossing:
-                ball.state = BallState::ExitingTowardsNorth;
-                break;
-            default:
-                ball.state = BallState::ExitingTowardsSouth;
-                break;
-            }
-        }
-        break;
-
-    case BallState::EnteringFromWest:
-        if (ball.transition >= 0.5) {
-            ball.transition -= 0.5;
-            switch (tile.type) {
-            case TileType::CornerNorthWest:
-                ball.state = BallState::ExitingTowardsNorth;
-                break;
-            case TileType::CornerSouthWest:
-                ball.state = BallState::ExitingTowardsSouth;
-                break;
-            case TileType::Horizontal:
-            case TileType::Crossing:
-                ball.state = BallState::ExitingTowardsEast;
-                break;
-            default:
-                ball.state = BallState::ExitingTowardsWest;
-                break;
-            }
-        }
-        break;
-
-    case BallState::ExitingTowardsNorth:
-        if (ball.transition >= 0.5) {
-            ball.transition -= 0.5;
-            ball.row -= 1;
-            ball.state = BallState::EnteringFromSouth;
-        }
-        break;
-
-    case BallState::ExitingTowardsEast:
-        if (ball.transition >= 0.5) {
-            ball.transition -= 0.5;
-            ball.col += 1;
-            ball.state = BallState::EnteringFromWest;
-        }
-        break;
-
     case BallState::ExitingTowardsSouth:
         if (ball.transition >= 0.5) {
             ball.transition -= 0.5;
-            ball.row += 1;
             ball.state = BallState::EnteringFromNorth;
+            ++ball.row;
         }
         break;
 
     case BallState::ExitingTowardsWest:
         if (ball.transition >= 0.5) {
             ball.transition -= 0.5;
-            ball.col -= 1;
             ball.state = BallState::EnteringFromEast;
+            --ball.col;
         }
         break;
 
+    case BallState::ExitingTowardsNorth:
+        if (ball.transition >= 0.5) {
+            ball.transition -= 0.5;
+            ball.state = BallState::EnteringFromSouth;
+            --ball.row;
+        }
+        break;
+
+    case BallState::ExitingTowardsEast:
+        if (ball.transition >= 0.5) {
+            ball.transition -= 0.5;
+            ball.state = BallState::EnteringFromWest;
+            ++ball.col;
+        }
+        break;
+    }
+
+    switch (tile.type) {
+        case TileType::CornerNorthEast:
+            if (ball.transition >= 0.5) {
+                ball.transition -= 0.5;
+                switch (ball.state) {
+                case BallState::EnteringFromNorth:
+                    ball.state = BallState::ExitingTowardsEast;
+                    break;
+                case BallState::EnteringFromEast:
+                    ball.state = BallState::ExitingTowardsNorth;
+                    break;
+                default:
+                    break;
+                }
+            }
+            break;
+
+        case TileType::CornerNorthWest:
+            if (ball.transition >= 0.5) {
+                ball.transition -= 0.5;
+                switch (ball.state) {
+                case BallState::EnteringFromNorth:
+                    ball.state = BallState::ExitingTowardsWest;
+                    break;
+                case BallState::EnteringFromWest:
+                    ball.state = BallState::ExitingTowardsNorth;
+                    break;
+                default:
+                    break;
+                }
+            }
+            break;
+
+        case TileType::CornerSouthEast:
+            if (ball.transition >= 0.5) {
+                ball.transition -= 0.5;
+                switch (ball.state) {
+                case BallState::EnteringFromSouth:
+                    ball.state = BallState::ExitingTowardsEast;
+                    break;
+                case BallState::EnteringFromEast:
+                    ball.state = BallState::ExitingTowardsSouth;
+                    break;
+                default:
+                    break;
+                }
+            }
+            break;
+
+        case TileType::CornerSouthWest:
+            if (ball.transition >= 0.5) {
+                ball.transition -= 0.5;
+                switch (ball.state) {
+                case BallState::EnteringFromSouth:
+                    ball.state = BallState::ExitingTowardsWest;
+                    break;
+                case BallState::EnteringFromWest:
+                    ball.state = BallState::ExitingTowardsSouth;
+                    break;
+                default:
+                    break;
+                }
+            }
+            break;
+
+        case TileType::Horizontal:
+            if (ball.transition >= 0.5) {
+                ball.transition -= 0.5;
+                switch (ball.state) {
+                case BallState::EnteringFromEast:
+                    ball.state = BallState::ExitingTowardsWest;
+                    break;
+                case BallState::EnteringFromWest:
+                    ball.state = BallState::ExitingTowardsEast;
+                    break;
+                default:
+                    break;
+                }
+            }
+            break;
+
+        case TileType::Vertical:
+            if (ball.transition >= 0.5) {
+                ball.transition -= 0.5;
+                switch (ball.state) {
+                case BallState::EnteringFromNorth:
+                    ball.state = BallState::ExitingTowardsSouth;
+                    break;
+                case BallState::EnteringFromSouth:
+                    ball.state = BallState::ExitingTowardsNorth;
+                    break;
+                default:
+                    break;
+                }
+            }
+            break;
+
+        case TileType::Crossing:
+            if (ball.transition >= 0.5) {
+                ball.transition -= 0.5;
+                switch (ball.state) {
+                case BallState::EnteringFromNorth:
+                    ball.state = BallState::ExitingTowardsSouth;
+                    break;
+                case BallState::EnteringFromEast:
+                    ball.state = BallState::ExitingTowardsWest;
+                    break;
+                case BallState::EnteringFromSouth:
+                    ball.state = BallState::ExitingTowardsNorth;
+                    break;
+                case BallState::EnteringFromWest:
+                    ball.state = BallState::ExitingTowardsEast;
+                    break;
+                default:
+                    break;
+                }
+            }
+            break;
+
+        default:
+            break;
     }
 }
 
