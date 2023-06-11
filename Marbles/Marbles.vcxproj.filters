@@ -5,5 +5,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="view.cpp" />
+    <ClCompile Include="model.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="view.hpp" />
+    <ClInclude Include="model.hpp" />
   </ItemGroup>
 </Project>
