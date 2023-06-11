@@ -9,10 +9,10 @@ void View::draw(const Model &m) const {
     ALLEGRO_COLOR line_color = al_map_rgb(127, 127, 127);
 
     // draw grid
-    for (int r = 0; r <= ROWS; ++r) {
+    for (int r = 0; r <= m.rows(); ++r) {
         al_draw_line(_x + 0.5, _y + r * _w + 0.5, _x + 8 * _w + 0.5, _y + r * _w + 0.5, line_color, 0.0);
     }
-    for (int c = 0; c <= COLS; ++c) {
+    for (int c = 0; c <= m.cols(); ++c) {
         al_draw_line(_x + c * _w + 0.5, _y + 0.5, _x + c * _w + 0.5, _y + 5 * _w + 0.5, line_color, 0.0);
     }
 
@@ -69,8 +69,8 @@ void View::draw(const Model &m) const {
         al_draw_filled_circle(x1, y1, r, color);
     };
 
-    for (int r = 0; r < ROWS; ++r) {
-        for (int c = 0; c < COLS; ++c) {
+    for (int r = 0; r < m.rows(); ++r) {
+        for (int c = 0; c < m.cols(); ++c) {
             Tile tile = m.tile(r, c);
             switch (tile.type) {
             case TileType::CornerNorthEast:

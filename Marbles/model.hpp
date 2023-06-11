@@ -3,9 +3,6 @@
 #include <cstdint>
 #include <vector>
 
-static constexpr int ROWS = 5;
-static constexpr int COLS = 8;
-
 enum class BallType : uint8_t {
     Red,
     Green,
@@ -66,10 +63,17 @@ struct Tile {
 
 class Model {
 public:
+    Model(int rows, int cols);
+
+    void clear();
+
     void turnClockwise(int row, int col);
     void turnCounterClockwise(int row, int col);
 
     void progress(double milliseconds);
+
+    int rows() const { return _rows; }
+    int cols() const { return _cols; }
 
     const std::vector<Ball> &balls() const { return _balls; }
     std::vector<Ball> &balls() { return _balls; }
@@ -77,10 +81,12 @@ public:
     const std::vector<Tile> &tiles() const { return _tiles; }
     std::vector<Tile> &tiles() { return _tiles; }
 
-    const Tile &tile(int row, int col) const { return _tiles[col + row * COLS]; }
-    Tile &tile(int row, int col) { return _tiles[col + row * COLS]; }
+    const Tile &tile(int row, int col) const { return _tiles[col + row * _cols]; }
+    Tile &tile(int row, int col) { return _tiles[col + row * _cols]; }
 
 private:
+    int _rows;
+    int _cols;
     std::vector<Tile> _tiles;
     std::vector<Ball> _balls;
 };

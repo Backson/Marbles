@@ -9,6 +9,9 @@ static constexpr double GRID_OFFSET_X = 40;
 static constexpr double GRID_OFFSET_Y = 75;
 static constexpr double TILE_SIZE = 90;
 
+static constexpr int ROWS = 5;
+static constexpr int COLS = 8;
+
 int main()
 {
     al_init();
@@ -29,12 +32,7 @@ int main()
     bool redraw = true;
     ALLEGRO_EVENT event;
 
-    Model model;
-
-    model.tiles().resize(ROWS * COLS);
-    for (auto &tile : model.tiles()) {
-        tile = Tile{ TileType::Empty };
-    }
+    Model model(ROWS, COLS);
 
     model.tile(0, 0) = Tile{ TileType::CornerSouthEast };
     model.tile(1, 0) = Tile{ TileType::CornerNorthEast };

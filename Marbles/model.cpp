@@ -1,5 +1,18 @@
 #include "model.hpp"
 
+Model::Model(int rows, int cols) :
+    _rows(rows), _cols(cols)
+{
+    _tiles.resize(rows * cols);
+    clear();
+}
+
+void Model::clear() {
+    for (auto &tile : _tiles) {
+        tile = Tile{ TileType::Empty };
+    }
+}
+
 void Model::turnClockwise(int row, int col) {
     if (tile(row, col).type == TileType::Rotor && tile(row, col).rotor.state == RotorState::Resting) {
         tile(row, col).rotor.state = RotorState::TurningClockwise;
@@ -16,8 +29,8 @@ void Model::turnCounterClockwise(int row, int col) {
 
 void Model::progress(double milliseconds) {
 
-    for (int r = 0; r < ROWS; ++r) {
-        for (int c = 0; c < COLS; ++c) {
+    for (int r = 0; r < _rows; ++r) {
+        for (int c = 0; c < _cols; ++c) {
             switch (tile(r, c).type) {
             case TileType::Rotor:
                 if (tile(r, c).rotor.state == RotorState::TurningClockwise)
@@ -51,7 +64,7 @@ void Model::progress(double milliseconds) {
         double velocity = 1e-3;
 
         // current tile
-        Tile tile = _tiles[ball.col + ball.row * COLS];
+        Tile tile = _tiles[ball.col + ball.row * _cols];
 
         ball.transition += milliseconds * velocity;
 
